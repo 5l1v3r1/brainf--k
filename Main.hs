@@ -1,21 +1,37 @@
-import           Control.Monad.Trans.State.Lazy
+import           Control.Applicative
+import           Control.Monad
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString as B
+import           Data.Word8
+import           System.Environment
+
+type Array = ([Word8], Word8, [Word8])
 
 main = do
-    r <- B.getContents >>= parseOnly eat
-    case r of Nothing -> return ()
-              Just m -> void $ runStateT (0 m) (repeat 0, repeat 0)
+    s <- fmap head getArgs >>= B.readFile
+    case parseOnly eat s of
+        Left str -> putStrLn str
+        Right f -> void $ f (repeat 0, 0, repeat 0)
 
-eat = foldr (>=>) return <$> choice
-    [ char '<' *> \m -> StateT $ \(l:ls, rs) -> return (l, (ls, m:rs))
-    , char '>' *> \m -> StateT $ \(ls, r:rs) -> return (r, (m:ls, rs))
-    , char '+' *> (return . (+ 1))
-    , char '-' *> (return . (- 1))
-    , char ',' *> const (liftIO getChar)
-    , char '.' *> \m -> liftIO putChar m >> return m
+eat :: Parser (Array -> IO Array)
+eat = fmap (foldl (>=>) return) . many' $ choice
+    [ char '<' ~> \(l:ls, m, rs) -> return (ls, l, m:rs)
+    , char '>' ~> \(ls, m, r:rs) -> return (m:ls, r, rs)
+    , char '+' ~> toMid succ
+    , char '-' ~> toMid pred
+    , char '.' ~> \s -> print (mid s) >> return s
+    , char ',' ~> \(l, _, r) -> getLine >>= \i -> return (l, read i, r)
     , fmap block $ char '[' *> eat <* char ']'
+    , anyChar ~> return
     ]
 
-block s 0 = return 0
-block s m = s m >>= block s
+mid (_, y, _) = y
+toMid f (x, y, z) = return (x, f y, z)
+
+infix 9 ~>
+v ~> c = c <$ v
+
+block :: (Array -> IO Array) -> Array -> IO Array
+block f s = case mid s of
+    0 -> return s
+    m -> f s >>= block f
