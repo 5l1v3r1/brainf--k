@@ -1,2 +1,2 @@
 # brainf--k
-The smallest brainf--k interpreter known to man (maybe).
+The smallest haskell brainf--k interpreter known to man (maybe).
