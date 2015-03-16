@@ -7,9 +7,9 @@ import qualified Data.Bytestring as B
 -- step :: Parser (Word8 -> Step)
 step = fmap (foldr (>=>) return)
      $  char '<' *> \m -> StateT $ \(l:ls, rs) -> return (l, (ls, m:rs))
-    <|> char '>' *> \m -> StateT $ \(ls, r:rs) -> return (l, (m:ls, rs))
-    <|> char '+' *> return . (+ 1)
-    <|> char '-' *> return . (- 1)
+    <|> char '>' *> \m -> StateT $ \(ls, r:rs) -> return (r, (m:ls, rs))
+    <|> char '+' *> (return . (+ 1))
+    <|> char '-' *> (return . (- 1))
     <|> char ',' *> const (liftIO getChar)
     <|> char '.' *> \m -> liftIO putChar m >> return m
     <|> block <$> char '[' *> step <* char ']'
