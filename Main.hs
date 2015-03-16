@@ -1,35 +1,25 @@
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.Bytestring as B
 
-type Array = ([Word8], [Word8])
-type Step = Array -> IO Array
+-- type Array = ([Word8], [Word8])
+-- type Step = StateT Array IO Word8
 
-data BF s = BF (s -> IO s)
+-- step :: Parser (Word8 -> Step)
+step = fmap (foldr (>=>) return)
+     $  char '<' *> \m -> StateT $ \(l:ls, rs) -> return (l, (ls, m:rs))
+    <|> char '>' *> \m -> StateT $ \(ls, r:rs) -> return (l, (m:ls, rs))
+    <|> char '+' *> return . (+ 1)
+    <|> char '-' *> return . (- 1)
+    <|> char ',' *> const (liftIO getChar)
+    <|> char '.' *> \m -> liftIO putChar m >> return m
+    <|> block <$> char '[' *> step <* char ']'
 
-instance Monad (BF s) where
-    return = BF . return
+-- block :: (Word8 -> Step) -> Word8 -> Step
+block s 0 = return 0
+block s m = s m >>= block s
 
-step :: Parser (StateT Array IO Word8)
-step =  aux '<' (\(l:ls, m, rs) -> (ls, l, m:rs))
-    <|> aux '>' (\(ls, m, r:rs) -> (m:ls, r, rs))
-    <|> aux '+' (\(ls, m, rs) -> (ls, m + 1, rs))
-    <|> aux '-' (\(ls, m, rs) -> (ls, m - 1, rs))
-    <|> char ',' *> \(ls, m, rs) -> (\c -> (ls, c, rs)) <$> getChar
-    <|> char '.' *> \(ls, m, rs) -> putChar m >> return (ls, m, rs)
-    <|> (\ss (ls, m, r) -> if m == 0 then return (ls, m, r) else compose) <$> char '[' *> many' step <* char ']'
-
-aux = (. (return .)) . (*>) . char
-
-compose :: [Step] -> Step
-compose f g arr = f arr >>= g
-
-block :: Step -> Step
-block s (ls, m, rs) =
-
--- compose = foldr (\f g -> (>>= g) . f) return
-
--- f * g = (>>= g) . f
--- f * = (. f) . (=<<)
--- * = (. (=<<)) . flip (.)
-
-go =
+main = do
+    code <- getArgs >>= (B.readFile . head)
+    case parseOnly $ B.filter (`elem` "<>+-,.") code of
+        Left e -> putStrLn e
+        Right f -> void . execStateT . f 0 $ (repeat 0, repeat 0)
