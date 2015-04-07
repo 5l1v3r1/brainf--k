@@ -4,7 +4,7 @@ import           Control.Applicative
 import           Control.Monad
 import           Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString as B
-import           Data.Word8
+import           Data.Word
 import           System.Environment
 
 main = do
