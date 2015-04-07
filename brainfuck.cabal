@@ -9,7 +9,7 @@ build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
 
-executable brainf-k
+executable brainfuck
   main-is:             Main.hs
   build-depends:       base >=4.8 && <4.9,
                        bytestring >=0.10 && <0.11,
